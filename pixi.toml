@@ -1,0 +1,16 @@
+[workspace]
+authors = ["codewithprags <pragati.dwivedi@outlook.com>"]
+channels = ["conda-forge"]
+name = "BINF-5007-Materials"
+platforms = ["win-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+python = ">=3.13.3,<3.14"
+scikit-learn = ">=1.6.1,<2"
+seaborn = ">=0.13.2,<0.14"
+ipykernel = ">=6.29.5,<7"
+pip = ">=25.1.1,<26"
+matplotlib = ">=3.10.3,<4"
