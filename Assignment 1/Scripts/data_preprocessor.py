@@ -14,6 +14,12 @@ def impute_missing_values(data, strategy='mean'):
     :param strategy: str, imputation method ('mean', 'median', 'mode')
     :return: pandas DataFrame
     """
+    messy_data_impute = data.copy()
+    
+    for col in messy_data_impute:
+        if messy_data_impute[col].isnull().any():
+            
+    
     
     # TODO: Fill missing values based on the specified strategy
     pass
