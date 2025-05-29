@@ -9,11 +9,11 @@ from sklearn.metrics import classification_report, accuracy_score
 #data exploration
 messy_data = pd.read_csv('D:/VSCode ProjectsRepos/BINF-5007-Materials/Assignment 1/Data/messy_data.csv')
 data_explor = messy_data.copy()
-print(data_explor)
-print(data_explor.head())
+#print(data_explor)
+#print(data_explor.head())
 
-data_explor.info()
-print(data_explor.isnull().sum())
+#data_explor.info()
+#print(data_explor.isnull().sum())
 
 
 # 1. Impute Missing Values
@@ -31,17 +31,15 @@ def impute_missing_values(data, strategy='mean'):
     for col in messy_data_impute:
         if messy_data_impute[col].isnull().any():
             try:
-                if strategy == "mean" :
-                    messy_data_impute[col] = messy_data_impute[col].fillna(messy_data_impute[col].mean())
-
+                if strategy == "mean":
+                    messy_data_impute[col].fillna(messy_data_impute[col].mean(), inplace=True)
                 elif strategy == "median":
-                    messy_data_impute[col] = messy_data_impute[col].fillna(messy_data_impute[col].median())
-
+                    messy_data_impute[col].fillna(messy_data_impute[col].median(), inplace=True)
                 elif strategy == "mode":
-                    messy_data_impute[col] = messy_data_impute[col].fillna(messy_data_impute[col].mode())[0]
+                    messy_data_impute[col].fillna(messy_data_impute[col].mode()[0], inplace=True)  
             except:
-                messy_data_impute[col] = messy_data_impute[col].fillna(messy_data_impute[col].mode())[0]
-
+                messy_data_impute[col].fillna(messy_data_impute[col].mode()[0], inplace=True)  
+    
     return messy_data_impute
 
 # print("this is the test df for imput")
@@ -51,17 +49,23 @@ def impute_missing_values(data, strategy='mean'):
 # print(test_df.isnull().sum())
 
 
+print("_____________________Checking Data for Duplicates_____________________________")
+print(data_explor.duplicated().sum())
+# 2. Remove Duplicates
+def remove_duplicates(data):
+    """
+    Remove duplicate rows from the dataset.
+    :param data: pandas DataFrame
+    :return: pandas DataFrame
+    """
+    # TODO: Remove duplicate rows
 
+    messy_data_noduplicate = data.copy().drop_duplicates()
 
-# # 2. Remove Duplicates
-# def remove_duplicates(data):
-#     """
-#     Remove duplicate rows from the dataset.
-#     :param data: pandas DataFrame
-#     :return: pandas DataFrame
-#     """
-#     # TODO: Remove duplicate rows
-#     pass
+    return messy_data_noduplicate
+
+    
+
 
 # # 3. Normalize Numerical Data
 # def normalize_data(data,method='minmax'):
