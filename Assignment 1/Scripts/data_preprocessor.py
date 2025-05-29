@@ -18,6 +18,14 @@ def impute_missing_values(data, strategy='mean'):
     
     for col in messy_data_impute:
         if messy_data_impute[col].isnull().any():
+            if strategy == "mean"
+                pd.api.types.is_numeric_dtype(messy_data_impute[col])
+                value_replace = messy_data_impute[col].mean()
+            else
+                value_replace = messy_data_impute[col].mode()[0]
+
+            elif strategy == "median"
+                if 
             
     
     
