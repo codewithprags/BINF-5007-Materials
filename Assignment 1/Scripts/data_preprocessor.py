@@ -6,6 +6,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, accuracy_score
 from scipy import stats
+import matplotlib.pyplot as plt
+
 
 
 #data exploration
@@ -17,7 +19,9 @@ data_explor = messy_data.copy()
 #data_explor.info()
 #print(data_explor.isnull().sum())
 
-def remove_cols_percent_missing(data, percent_missing=25):
+
+
+def remove_cols_percent_missing(data, percent_missing=50):
     """
     Remove columns exceeding specified missing value percentage threshold.
     Always preserves the 'target' column.
@@ -36,9 +40,7 @@ def remove_cols_percent_missing(data, percent_missing=25):
     missing_pct = messy_data_missing.isnull().mean() * 100
 
     for col in messy_data_missing.columns:
-        if col == "target":
-            continue
-        elif missing_pct[col] >= percent_missing:
+        if missing_pct[col] >= percent_missing:
             cols_to_remove.append(col)
 
     print(f"Columns to be removed ({len(cols_to_remove)}): {cols_to_remove}")
@@ -65,19 +67,16 @@ def impute_missing_values(data, strategy='mean'):
     messy_data_impute = data.copy()
     
     for col in messy_data_impute:
-        if col == "target":
-            continue
-        else:
-            if messy_data_impute[col].isnull().any():
-                try:
-                    if strategy == "mean":
-                     messy_data_impute[col].fillna(messy_data_impute[col].mean(), inplace=True)
-                    elif strategy == "median":
-                        messy_data_impute[col].fillna(messy_data_impute[col].median(), inplace=True)
-                    elif strategy == "mode":
-                        messy_data_impute[col].fillna(messy_data_impute[col].mode()[0], inplace=True)  
-                except:
-                    messy_data_impute[col].fillna(messy_data_impute[col].mode()[0], inplace=True)  
+        if messy_data_impute[col].isnull().any():
+            try:
+                if strategy == "mean":
+                 messy_data_impute[col].fillna(messy_data_impute[col].mean(), inplace=True)
+                elif strategy == "median":
+                    messy_data_impute[col].fillna(messy_data_impute[col].median(), inplace=True)
+                elif strategy == "mode":
+                       messy_data_impute[col].fillna(messy_data_impute[col].mode()[0], inplace=True)  
+            except:
+                messy_data_impute[col].fillna(messy_data_impute[col].mode()[0], inplace=True)  
     
     return messy_data_impute
 
@@ -103,27 +102,49 @@ def remove_duplicates(data):
 
     return messy_data_noduplicate
 
-def remove_outliers(data):
+def remove_outliers(data, show_plot= True):
     """Remove numeric outliers (|Z-score| > 3) with safety checks"""
     messy_data_nooutlier = data.copy()
-    num_cols = messy_data_nooutlier.select_dtypes(include=[np.number]).columns.difference(['target'])
+    num_cols = messy_data_nooutlier.select_dtypes(include=[np.number]).columns
     
-    if not num_cols.empty:
-        try:
-            z_scores = np.abs(stats.zscore(messy_data_nooutlier[num_cols]))
-            clean_data = clean_data[(z_scores < 3).all(axis=1)]
+    if show_plot and not num_cols.empty:
+        plt.figure(figsize=(10, 4*len(num_cols)))
+        
+        for i, col in enumerate(num_cols, 1):
+            plt.subplot(len(num_cols), 1, i)
             
-            # Check if dataframe became empty
-            if len(messy_data_nooutlier) == 0:
-                print("Warning: All rows removed as outliers. Returning original data.")
-                return data
-                
-        except Exception as e:
-            print(f"Error calculating Z-scores: {e}. Returning original data.")
-            return data
+            # Safe Z-score calculation with NaN handling
+            col_data = messy_data_nooutlier[col].dropna()
+            if len(col_data) > 1 :  # Check for variance
+                z_score = np.abs(stats.zscore(col_data))
+                outliers = np.zeros(len(messy_data_nooutlier), dtype=bool)
+                outliers[col_data.index] = z_score > 3
+            else:
+                outliers = np.zeros(len(messy_data_nooutlier), dtype=bool)
+
+            plt.scatter(messy_data_nooutlier.index, messy_data_nooutlier[col], 
+                       c=outliers, cmap='cool', alpha=0.6)
+            plt.title(f"Outliers in {col} (Red = Outlier)")
+            plt.xlabel("Row Index")
+            plt.ylabel(col)
+        
+        plt.tight_layout()
+
+    if not num_cols.empty:
+        # Safe Z-score calculation for all numeric columns
+        z_scores = np.abs(stats.zscore(messy_data_nooutlier[num_cols], nan_policy='omit'))
+        outlier_mask = np.zeros(len(messy_data_nooutlier), dtype=bool)
+        
+        if z_scores.ndim == 1:  # Single column case
+            valid_mask = ~np.isnan(z_scores)
+            outlier_mask[valid_mask] = z_scores[valid_mask] > 3
+        else:  # Multiple columns case
+            valid_mask = ~np.isnan(z_scores).any(axis=1)
+            outlier_mask[valid_mask] = (z_scores[valid_mask] > 3).any(axis=1)
+        
+        messy_data_nooutlier = messy_data_nooutlier[~outlier_mask]
     
     return messy_data_nooutlier
-           
 # 3. Normalize Numerical Data
 def normalize_data(data,method='minmax'):
     """Apply normalization to numerical features.
@@ -134,9 +155,19 @@ def normalize_data(data,method='minmax'):
 
     normal_data = data.copy()
 
+    object_cols = normal_data.select_dtypes(include=['object', 'category'])
+
+    if not object_cols.empty:
+        normal_data = pd.get_dummies(
+            normal_data,
+            columns=object_cols,
+            prefix_sep='_',
+            drop_first=True,
+            dtype='int8'
+        )
+    
+
     numeric_cols = normal_data.select_dtypes(include = ["number"]).columns
-    if 'target' in numeric_cols:
-        numeric_cols = numeric_cols.drop('target')
 
     if not numeric_cols.empty:
         if method == 'minmax':
@@ -180,8 +211,8 @@ def remove_redundant_features(data, threshold=0.9):
     # TODO: Remove redundant features based on the correlation threshold (HINT: you can use the corr() method)
     pass
 
-test_df = remove_redundant_features(messy_data,threshold=0.9)
-print(test_df)
+#test_df = remove_redundant_features(messy_data,threshold=0.9)
+#print(test_df)
 # # ---------------------------------------------------
 
 
