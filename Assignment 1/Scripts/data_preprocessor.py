@@ -21,7 +21,8 @@ data_explor = messy_data.copy()
 
 
 
-def remove_cols_percent_missing(data, percent_missing=50):
+def remove_cols_percent_missing(data, percent_missing=30):
+    print("_____________________Removing Columns with High percentage of Missing Values_____________________________")
     """
     Remove columns exceeding specified missing value percentage threshold.
     Always preserves the 'target' column.
@@ -36,17 +37,19 @@ def remove_cols_percent_missing(data, percent_missing=50):
     messy_data_missing = data.copy()
     cols_to_remove = []
 
-    # Calculate missing percentages for all columns
-    missing_pct = messy_data_missing.isnull().mean() * 100
+    
+    missing_pct = messy_data_missing.isnull().mean() * 100   # Calculate missing percentages for all columns
 
-    for col in messy_data_missing.columns:
-        if missing_pct[col] >= percent_missing:
+    for col in messy_data_missing.columns:   # loops though each column, exlcuding the target column and evaluates if the column should be removed based on the percentation
+        if col == "target":
+            continue
+        elif missing_pct[col] >= percent_missing:
             cols_to_remove.append(col)
 
-    print(f"Columns to be removed ({len(cols_to_remove)}): {cols_to_remove}")
+    print(f"Columns to be removed ({len(cols_to_remove)}): {cols_to_remove}")   
     
-    # Only remove columns if any were identified
-    if cols_to_remove:
+  
+    if cols_to_remove:# Only remove columns if any were identified
         messy_data_missing = messy_data_missing.drop(columns=cols_to_remove)
     else:
         print(f"No columns exceeded {percent_missing}% missing threshold")
@@ -54,8 +57,9 @@ def remove_cols_percent_missing(data, percent_missing=50):
     return messy_data_missing
 
 
-# 1. Impute Missing Values
+
 def impute_missing_values(data, strategy='mean'):
+    print("_____________________Imputing Missing Values_____________________________")
     """
     Fill missing values in the dataset.
     :param data: pandas DataFrame
@@ -66,17 +70,21 @@ def impute_missing_values(data, strategy='mean'):
     
     messy_data_impute = data.copy()
     
-    for col in messy_data_impute:
-        if messy_data_impute[col].isnull().any():
+    for col in messy_data_impute:  # exlcude the target column
+        if col == "target":
+            continue
+    
+    else :   #loops though each column and row to find null values , it will fill in the null with the either the mean. median or mode
+        if messy_data_impute[col].isnull().any(): 
             try:
                 if strategy == "mean":
-                 messy_data_impute[col].fillna(messy_data_impute[col].mean(), inplace=True)
+                 messy_data_impute[col].fillna(messy_data_impute[col].mean(), inplace=True)   #replace any missing in the column with mean of the col
                 elif strategy == "median":
-                    messy_data_impute[col].fillna(messy_data_impute[col].median(), inplace=True)
+                    messy_data_impute[col].fillna(messy_data_impute[col].median(), inplace=True)   #replace any missing in the column with median of the col
                 elif strategy == "mode":
-                       messy_data_impute[col].fillna(messy_data_impute[col].mode()[0], inplace=True)  
+                       messy_data_impute[col].fillna(messy_data_impute[col].mode()[0], inplace=True)  #replace any missing in the column with mode of the col
             except:
-                messy_data_impute[col].fillna(messy_data_impute[col].mode()[0], inplace=True)  
+                messy_data_impute[col].fillna(messy_data_impute[col].mode()[0], inplace=True)  #if the col has objects,replace any missing in the column with mode of the col
     
     return messy_data_impute
 
@@ -87,10 +95,11 @@ def impute_missing_values(data, strategy='mean'):
 # print(test_df.isnull().sum())
 
 
-print("_____________________Checking Data for Duplicates_____________________________")
-print(data_explor.duplicated().sum())
+
 # 2. Remove Duplicates
 def remove_duplicates(data):
+    print("_____________________Checking Data for Duplicates_____________________________")
+    print(data_explor.duplicated().sum())
     """
     Remove duplicate rows from the dataset.
     :param data: pandas DataFrame
@@ -98,14 +107,17 @@ def remove_duplicates(data):
     """
     # TODO: Remove duplicate rows
 
-    messy_data_noduplicate = data.copy().drop_duplicates()
+    messy_data_noduplicate = data.copy().drop_duplicates()  #drops druplicate rows
 
     return messy_data_noduplicate
 
+
+
 def remove_outliers(data, show_plot= True):
+    print("_____________________Removing Ouliers_____________________________")
     """Remove numeric outliers (|Z-score| > 3) with safety checks"""
     messy_data_nooutlier = data.copy()
-    num_cols = messy_data_nooutlier.select_dtypes(include=[np.number]).columns
+    num_cols = messy_data_nooutlier.select_dtypes(include=[np.number]).columns.difference(['target'])
     
     if show_plot and not num_cols.empty:
         plt.figure(figsize=(10, 4*len(num_cols)))
@@ -147,6 +159,7 @@ def remove_outliers(data, show_plot= True):
     return messy_data_nooutlier
 # 3. Normalize Numerical Data
 def normalize_data(data,method='minmax'):
+    print("_____________________Encoding and Normalizing the Data_____________________________")
     """Apply normalization to numerical features.
     :param data: pandas DataFrame
     :param method: str, normalization method ('minmax' (default) or 'standard')
@@ -155,7 +168,8 @@ def normalize_data(data,method='minmax'):
 
     normal_data = data.copy()
 
-    object_cols = normal_data.select_dtypes(include=['object', 'category'])
+    object_cols = normal_data.select_dtypes(include=['object', 'category']).columns
+    numeric_cols = normal_data.select_dtypes(include = ["number"]).columns 
 
     if not object_cols.empty:
         normal_data = pd.get_dummies(
@@ -165,9 +179,12 @@ def normalize_data(data,method='minmax'):
             drop_first=True,
             dtype='int8'
         )
-    
 
-    numeric_cols = normal_data.select_dtypes(include = ["number"]).columns
+   
+
+    if 'target' in numeric_cols:
+        numeric_cols = numeric_cols.drop('target')
+        
 
     if not numeric_cols.empty:
         if method == 'minmax':
@@ -185,6 +202,7 @@ def normalize_data(data,method='minmax'):
 
 # 4. Remove Redundant Features   
 def remove_redundant_features(data, threshold=0.9):
+    print("_____________________Removing Redunant Features_____________________________")
     """Remove redundant or duplicate columns.
     :param data: pandas DataFrame
     :param threshold: float, correlation threshold
@@ -205,6 +223,7 @@ def remove_redundant_features(data, threshold=0.9):
                 cols_drop.add(corr_matrix.columns[i])
     
     # Drop the redundant columns
+    print(cols_drop)
     messy_noredundant = messy_noredundant.drop(columns=cols_drop)
     
     return messy_noredundant
