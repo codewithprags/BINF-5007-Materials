@@ -21,19 +21,20 @@ data_explor = messy_data.copy()
 
 
 
-def remove_cols_percent_missing(data, percent_missing=30):
-    print("_____________________Removing Columns with High percentage of Missing Values_____________________________")
+def remove_cols_percent_missing(data, percent_missing=50):
+
     """
     Remove columns exceeding specified missing value percentage threshold.
-    Always preserves the 'target' column.
     
     Parameters:
         data (pd.DataFrame): Input DataFrame
-        percent_missing (float): Threshold percentage (0-100) for column removal
+        percent_missing (float): Threshold percentage (0-100) 
         
     Returns:
         pd.DataFrame: DataFrame with high-missing columns removed
     """
+
+    print("_____________________Removing Columns with High percentage of Missing Values_____________________________")
     messy_data_missing = data.copy()
     cols_to_remove = []
 
@@ -55,11 +56,12 @@ def remove_cols_percent_missing(data, percent_missing=30):
         print(f"No columns exceeded {percent_missing}% missing threshold")
     
     return messy_data_missing
+    
 
 
 
 def impute_missing_values(data, strategy='mean'):
-    print("_____________________Imputing Missing Values_____________________________")
+    
     """
     Fill missing values in the dataset.
     :param data: pandas DataFrame
@@ -67,24 +69,24 @@ def impute_missing_values(data, strategy='mean'):
     :return: pandas DataFrame
     """
     #TODO: Fill missing values based on the specified strategy
-    
+    print("_____________________Imputing Missing Values_____________________________")
     messy_data_impute = data.copy()
     
     for col in messy_data_impute:  # exlcude the target column
         if col == "target":
             continue
     
-    else :   #loops though each column and row to find null values , it will fill in the null with the either the mean. median or mode
-        if messy_data_impute[col].isnull().any(): 
-            try:
-                if strategy == "mean":
-                 messy_data_impute[col].fillna(messy_data_impute[col].mean(), inplace=True)   #replace any missing in the column with mean of the col
-                elif strategy == "median":
-                    messy_data_impute[col].fillna(messy_data_impute[col].median(), inplace=True)   #replace any missing in the column with median of the col
-                elif strategy == "mode":
+        else :   #loops though each column and row to find null values , it will fill in the null with the either the mean. median or mode
+            if messy_data_impute[col].isnull().any(): 
+                if pd.api.types.is_numeric_dtype(messy_data_impute[col]):
+                    if strategy == "mean":
+                        messy_data_impute[col].fillna(messy_data_impute[col].mean(), inplace=True)   #replace any missing in the column with mean of the col
+                    elif strategy == "median":
+                        messy_data_impute[col].fillna(messy_data_impute[col].median(), inplace=True)   #replace any missing in the column with median of the col
+                    elif strategy == "mode":
                        messy_data_impute[col].fillna(messy_data_impute[col].mode()[0], inplace=True)  #replace any missing in the column with mode of the col
-            except:
-                messy_data_impute[col].fillna(messy_data_impute[col].mode()[0], inplace=True)  #if the col has objects,replace any missing in the column with mode of the col
+                else:
+                    messy_data_impute[col].fillna(messy_data_impute[col].mode()[0], inplace=True)  #if the col has objects,replace any missing in the column with mode of the col
     
     return messy_data_impute
 
@@ -98,7 +100,7 @@ def impute_missing_values(data, strategy='mean'):
 
 # 2. Remove Duplicates
 def remove_duplicates(data):
-    print("_____________________Checking Data for Duplicates_____________________________")
+    
     print(data_explor.duplicated().sum())
     """
     Remove duplicate rows from the dataset.
@@ -106,7 +108,7 @@ def remove_duplicates(data):
     :return: pandas DataFrame
     """
     # TODO: Remove duplicate rows
-
+    print("_____________________Checking Data for Duplicates_____________________________")
     messy_data_noduplicate = data.copy().drop_duplicates()  #drops druplicate rows
 
     return messy_data_noduplicate
@@ -114,27 +116,28 @@ def remove_duplicates(data):
 
 
 def remove_outliers(data, show_plot= True):
+    
+    """Remove numeric outliers (|Z-score| > 3) """
     print("_____________________Removing Ouliers_____________________________")
-    """Remove numeric outliers (|Z-score| > 3) with safety checks"""
     messy_data_nooutlier = data.copy()
-    num_cols = messy_data_nooutlier.select_dtypes(include=[np.number]).columns.difference(['target'])
+    num_cols = messy_data_nooutlier.select_dtypes(include=[np.number]).columns.difference(['target']) #stores all the numeric columns and skips the target column
     
     if show_plot and not num_cols.empty:
-        plt.figure(figsize=(10, 4*len(num_cols)))
+        plt.figure(figsize=(10, 4*len(num_cols)))  #sets plot dimensions
         
-        for i, col in enumerate(num_cols, 1):
+        for i, col in enumerate(num_cols, 1):  #loops though each column in num_cols and evaluates the zscores
             plt.subplot(len(num_cols), 1, i)
             
-            # Safe Z-score calculation with NaN handling
-            col_data = messy_data_nooutlier[col].dropna()
+            
+            col_data = messy_data_nooutlier[col].dropna() #removes any exisiting na values from each col in the dataset
             if len(col_data) > 1 :  # Check for variance
                 z_score = np.abs(stats.zscore(col_data))
                 outliers = np.zeros(len(messy_data_nooutlier), dtype=bool)
-                outliers[col_data.index] = z_score > 3
+                outliers[col_data.index] = z_score > 3  #if the z score is >3 then save in the outilers varialbe for each column
             else:
                 outliers = np.zeros(len(messy_data_nooutlier), dtype=bool)
 
-            plt.scatter(messy_data_nooutlier.index, messy_data_nooutlier[col], 
+            plt.scatter(messy_data_nooutlier.index, messy_data_nooutlier[col],  #creates a plot to visualize the outliers incomaprision to the rest of the data in the col
                        c=outliers, cmap='cool', alpha=0.6)
             plt.title(f"Outliers in {col} (Red = Outlier)")
             plt.xlabel("Row Index")
@@ -143,35 +146,36 @@ def remove_outliers(data, show_plot= True):
         plt.tight_layout()
 
     if not num_cols.empty:
-        # Safe Z-score calculation for all numeric columns
+        #  Z-score calculation for all numeric columns
         z_scores = np.abs(stats.zscore(messy_data_nooutlier[num_cols], nan_policy='omit'))
-        outlier_mask = np.zeros(len(messy_data_nooutlier), dtype=bool)
         
-        if z_scores.ndim == 1:  # Single column case
-            valid_mask = ~np.isnan(z_scores)
-            outlier_mask[valid_mask] = z_scores[valid_mask] > 3
-        else:  # Multiple columns case
-            valid_mask = ~np.isnan(z_scores).any(axis=1)
-            outlier_mask[valid_mask] = (z_scores[valid_mask] > 3).any(axis=1)
-        
-        messy_data_nooutlier = messy_data_nooutlier[~outlier_mask]
+        if not num_cols.empty:
+             # Calculate Z-scores (automatically handles NaN with nan_policy='omit')
+            z_scores = np.abs(stats.zscore(messy_data_nooutlier[num_cols], nan_policy='omit'))
+    
+            # Identify outliers in any column
+            is_outlier = (z_scores > 3).any(axis=1) if z_scores.ndim > 1 else (z_scores > 3)
+           
+            # Filter out outliers
+            messy_data_nooutlier = messy_data_nooutlier[~is_outlier]
     
     return messy_data_nooutlier
+
 # 3. Normalize Numerical Data
 def normalize_data(data,method='minmax'):
-    print("_____________________Encoding and Normalizing the Data_____________________________")
+    
     """Apply normalization to numerical features.
     :param data: pandas DataFrame
     :param method: str, normalization method ('minmax' (default) or 'standard')
     """
     # TODO: Normalize numerical data using Min-Max or Standard scaling
-
+    print("_____________________Encoding and Normalizing the Data_____________________________")
     normal_data = data.copy()
 
-    object_cols = normal_data.select_dtypes(include=['object', 'category']).columns
-    numeric_cols = normal_data.select_dtypes(include = ["number"]).columns 
+    object_cols = normal_data.select_dtypes(include=['object', 'category']).columns  #stores all object/character columns
+    numeric_cols = normal_data.select_dtypes(include = ["number"]).columns   #stores all numeric cols
 
-    if not object_cols.empty:
+    if not object_cols.empty:   #one hot encoding for the catergorial data columns, stores each category in its own col and adds to the dataset
         normal_data = pd.get_dummies(
             normal_data,
             columns=object_cols,
@@ -182,40 +186,41 @@ def normalize_data(data,method='minmax'):
 
    
 
-    if 'target' in numeric_cols:
+    if 'target' in numeric_cols:  #ensures we are leaving out target from the numeric cols, bc altering this will alter our model
         numeric_cols = numeric_cols.drop('target')
         
 
-    if not numeric_cols.empty:
+    if not numeric_cols.empty:  #if the num col is not empty then chose the normalization scaler based on the selection by user
         if method == 'minmax':
             scaler = MinMaxScaler()
         elif method == 'standard':
             scaler = StandardScaler()
         else:
-            raise ValueError("Method must be either 'minmax' or 'standard'")
+            raise ValueError("Method must be either 'minmax' or 'standard'") #incase of invald user input
         
         # Apply scaling to numeric columns
-        normal_data[numeric_cols] = scaler.fit_transform(normal_data[numeric_cols])
+        normal_data[numeric_cols] = scaler.fit_transform(normal_data[numeric_cols]) #fits the data based on the scaler method chosen
     
     return normal_data
 
 
 # 4. Remove Redundant Features   
 def remove_redundant_features(data, threshold=0.9):
-    print("_____________________Removing Redunant Features_____________________________")
+    
     """Remove redundant or duplicate columns.
     :param data: pandas DataFrame
     :param threshold: float, correlation threshold
     :return: pandas DataFrame
     """
-
+    print("_____________________Removing Redunant Features_____________________________")
     messy_noredundant = data.copy()
 
-    corr_matrix = messy_noredundant.select_dtypes(include=['number']).corr().abs()
+    corr_matrix = messy_noredundant.select_dtypes(include=['number']).corr().abs() #creates a correlation matric for only the numeric cols in the data set
+    print(corr_matrix)
 
-    cols_drop = set()
+    cols_drop = set() #store the cols to drop based on the high correlation factors
 
-    for i in range(len(corr_matrix.columns)):
+    for i in range(len(corr_matrix.columns)): #for loop to iterate through each col in the correcation matrix and evaluate if the values are matching the threshold
         for j in range(i):
             # If correlation exceeds threshold and column hasn't been marked for removal
             if corr_matrix.iloc[i, j] > threshold and corr_matrix.columns[j] not in cols_drop:
@@ -223,12 +228,12 @@ def remove_redundant_features(data, threshold=0.9):
                 cols_drop.add(corr_matrix.columns[i])
     
     # Drop the redundant columns
-    print(cols_drop)
+    print("Redundant Columns to Drop :", cols_drop)
     messy_noredundant = messy_noredundant.drop(columns=cols_drop)
     
     return messy_noredundant
     # TODO: Remove redundant features based on the correlation threshold (HINT: you can use the corr() method)
-    pass
+
 
 #test_df = remove_redundant_features(messy_data,threshold=0.9)
 #print(test_df)
