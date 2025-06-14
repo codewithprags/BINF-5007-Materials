@@ -61,6 +61,9 @@ def elastic_net_regression(df, target_col, alpha=0.1, l1_ratio=0.5):
     X = df.drop(columns=[target_col])
     y = df[target_col]
 
+    #one-hot encoding categorical variables
+    X = pd.get_dummies(X, drop_first=True)  # drop_first=True to avoid dummy variable trap
+    
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     model = ElasticNet(alpha=alpha, l1_ratio=l1_ratio)
@@ -73,16 +76,51 @@ def elastic_net_regression(df, target_col, alpha=0.1, l1_ratio=0.5):
     r2 = r2_score(y_test, predictions)
     print(f"R-squared: {r2}")
 
+    alphas = [0.1, 0.5, 1.0, 5.0, 10.0]  # List of alphas to try
+    l1_ratios = [0.1, 0.5, 0.7, 0.9]  # List of l1_ratios to try
+    df_results = []
 
-    #Checking for the best alpha and l1_ratio using ElasticNetCV    
-    elastic_net_cv = ElasticNetCV(alphas=[0.1, 0.5, 1.0, 5.0, 10.0], l1_ratio=[0.1, 0.5, 0.7, 0.9], cv=5)
+    for alpha in alphas:
+        for l1_ratio in l1_ratios:
+            model = ElasticNet(alpha=alpha, l1_ratio=l1_ratio)
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_test)
+            mse = mean_squared_error(y_test, y_pred)
+            r2 = r2_score(y_test, y_pred)
+            print(f"Alpha: {alpha}, L1 Ratio: {l1_ratio}, MSE: {mse}, R-squared: {r2}")
+            df_results.append({"Alpha": alpha, "L1_Ratio": l1_ratio, "MSE": mse, "R_squared": r2})
+
+     # plotting the MSE and R2 in a heatmap for each alpha and l1_ratio combination
+    plt.figure(figsize=(12, 6))
+    mse_pivot = pd.DataFrame(df_results).pivot("L1_Ratio", "Alpha", "MSE")
+    sns.heatmap(mse_pivot, annot=True, cmap="YlGnBu", fmt=".2f")
+    plt.title("Mean Squared Error Heatmap")
+    plt.xlabel("Alpha")
+    plt.ylabel("L1 Ratio")
+    plt.show()
+
+    #Checking for the best alpha and l1_ratio using ElasticNetCV  
+     
+    elastic_net_cv = ElasticNetCV(alphas, l1_ratios, cv=5)
     elastic_net_cv.fit(X_train, y_train) 
     best_alpha = elastic_net_cv.alpha_
     best_l1_ratio = elastic_net_cv.l1_ratio_  
     print(f"Best alpha: {best_alpha}, Best l1_ratio: {best_l1_ratio}") 
 
-    return model, predictions, mse, r2, best_alpha, best_l1_ratio
+    #imporving the model with the best alpha and l1_ratio
+    y_pred_cv = elastic_net_cv.predict(X_test)
+    mse_cv = mean_squared_error(y_test, y_pred_cv)
+    r2_cv = r2_score(y_test, y_pred_cv)
+    print(f"Mean Squared Error with CV: {mse_cv}")
+    print(f"R-squared with CV: {r2_cv}")
 
-print("Performing Elastic Net regression...")
-heart_disease_cleaned = clean_data(heart_disease)   
-model, predictions, mse, r2, best_alpha, best_l1_ratio = elastic_net_regression(heart_disease_cleaned, target_col='chol')
+   
+    plt.show()
+
+    return model, predictions, mse, r2, best_alpha, best_l1_ratio
+#model, predictions, mse, r2, best_alpha, best_l1_ratio
+
+# print("Performing Elastic Net regression...")
+# heart_disease_cleaned = clean_data(heart_disease)   
+# elastic_net_regression(heart_disease_cleaned, target_col='chol')
+

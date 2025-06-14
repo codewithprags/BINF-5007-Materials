@@ -60,7 +60,7 @@ def remove_cols_percent_missing(data, percent_missing=50):
 
 
 
-def impute_missing_values(data, strategy='mean'):
+def impute_missing_values(data, strategy='mean', target_col='target'):
     
     """
     Fill missing values in the dataset.
@@ -73,7 +73,7 @@ def impute_missing_values(data, strategy='mean'):
     messy_data_impute = data.copy()
     
     for col in messy_data_impute:  # exlcude the target column
-        if col == "target":
+        if col == target_col:  #if the col is the target column then skip it
             continue
     
         else :   #loops though each column and row to find null values , it will fill in the null with the either the mean. median or mode
@@ -115,56 +115,46 @@ def remove_duplicates(data):
 
 
 
-def remove_outliers(data, show_plot= True):
+def remove_outliers(data, show_plot=False, target_col=None):
+    """
+    Remove outliers from the DataFrame using z-score method for numeric columns except the target column.
+    """
+    from scipy import stats
+    import numpy as np
+    import pandas as pd
     
-    """Remove numeric outliers (|Z-score| > 3) """
-    print("_____________________Removing Ouliers_____________________________")
-    messy_data_nooutlier = data.copy()
-    num_cols = messy_data_nooutlier.select_dtypes(include=[np.number]).columns.difference(['target']) #stores all the numeric columns and skips the target column
+    df = data.copy()
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    if target_col and target_col in numeric_cols:
+        numeric_cols.remove(target_col)
     
-    if show_plot and not num_cols.empty:
-        plt.figure(figsize=(10, 4*len(num_cols)))  #sets plot dimensions
-        
-        for i, col in enumerate(num_cols, 1):  #loops though each column in num_cols and evaluates the zscores
-            plt.subplot(len(num_cols), 1, i)
-            
-            
-            col_data = messy_data_nooutlier[col].dropna() #removes any exisiting na values from each col in the dataset
-            if len(col_data) > 1 :  # Check for variance
-                z_score = np.abs(stats.zscore(col_data))
-                outliers = np.zeros(len(messy_data_nooutlier), dtype=bool)
-                outliers[col_data.index] = z_score > 3  #if the z score is >3 then save in the outilers varialbe for each column
-            else:
-                outliers = np.zeros(len(messy_data_nooutlier), dtype=bool)
-
-            plt.scatter(messy_data_nooutlier.index, messy_data_nooutlier[col],  #creates a plot to visualize the outliers incomaprision to the rest of the data in the col
-                       c=outliers, cmap='cool', alpha=0.6)
-            plt.title(f"Outliers in {col} (Red = Outlier)")
-            plt.xlabel("Row Index")
-            plt.ylabel(col)
-        
-        plt.tight_layout()
-
-    if not num_cols.empty:
-        #  Z-score calculation for all numeric columns
-        z_scores = np.abs(stats.zscore(messy_data_nooutlier[num_cols], nan_policy='omit'))
-        
-        if not num_cols.empty:
-             # Calculate Z-scores (automatically handles NaN with nan_policy='omit')
-            z_scores = np.abs(stats.zscore(messy_data_nooutlier[num_cols], nan_policy='omit'))
+    # Initialize a boolean Series for outliers
+    outliers = pd.Series(False, index=df.index)
     
-            # Identify outliers in any column
-            is_outlier = (z_scores > 3).any(axis=1) if z_scores.ndim > 1 else (z_scores > 3)
-           
-            # Filter out outliers
-            messy_data_nooutlier = messy_data_nooutlier[~is_outlier]
+    for col in numeric_cols:
+        col_data = df[col]
+        z_score = np.abs(stats.zscore(col_data, nan_policy='omit'))
+        # Mark as outlier if z-score > 3
+        outliers = outliers | (z_score > 3)
     
-    return messy_data_nooutlier
+    # Remove outliers
+    df_no_outliers = df.loc[~outliers]
+    
+    if show_plot:
+        import matplotlib.pyplot as plt
+        for col in numeric_cols:
+            plt.figure()
+            df[col].plot(kind='box', title=f'Boxplot of {col} (with outliers)')
+            plt.show()
+            df_no_outliers[col].plot(kind='box', title=f'Boxplot of {col} (without outliers)')
+            plt.show()
+    
+    return df_no_outliers
 
 # 3. Normalize Numerical Data
-def normalize_data(data,method='minmax'):
-    
-    """Apply normalization to numerical features.
+def normalize_data(data,method='minmax', target_col='target'):
+    """
+    Apply normalization to numerical features.
     :param data: pandas DataFrame
     :param method: str, normalization method ('minmax' (default) or 'standard')
     """
@@ -175,20 +165,20 @@ def normalize_data(data,method='minmax'):
     object_cols = normal_data.select_dtypes(include=['object', 'category']).columns  #stores all object/character columns
     numeric_cols = normal_data.select_dtypes(include = ["number"]).columns   #stores all numeric cols
 
-    if not object_cols.empty:   #one hot encoding for the catergorial data columns, stores each category in its own col and adds to the dataset
-        normal_data = pd.get_dummies(
-            normal_data,
-            columns=object_cols,
-            prefix_sep='_',
-            drop_first=True,
-            dtype='int8'
-        )
+    # if not object_cols.empty:   #one hot encoding for the catergorial data columns, stores each category in its own col and adds to the dataset
+    #     normal_data = pd.get_dummies(
+    #         normal_data,
+    #         columns=object_cols,
+    #         prefix_sep='_',
+    #         drop_first=True,
+    #         dtype='int8'
+    #     )
 
    
 
-    if 'target' in numeric_cols:  #ensures we are leaving out target from the numeric cols, bc altering this will alter our model
-        numeric_cols = numeric_cols.drop('target')
-        
+    if target_col in numeric_cols:  #ensures we are leaving out target from the numeric cols, bc altering this will alter our model
+        numeric_cols = numeric_cols.drop(target_col)
+
 
     if not numeric_cols.empty:  #if the num col is not empty then chose the normalization scaler based on the selection by user
         if method == 'minmax':
