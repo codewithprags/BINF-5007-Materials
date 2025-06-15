@@ -39,11 +39,13 @@ def clean_data(df):
     #     df_cleaned = df_cleaned.drop(columns=cols_to_remove)
     #     print(f"Columns removed due to exceeding {percent_missing}% missing threshold: {cols_to_remove}")
     df_cleaned = df.loc[:, df.isnull().mean()<0.50]
-    df_cleaned = df_cleaned.dropna()  # Remove rows with NaN values
+    df_cleaned = df_cleaned.dropna() 
+    
+     # Remove rows with NaN values
     unique_indices = df.drop_duplicates().index
     df_cleaned = df.iloc[unique_indices]
 
-    #impute missing values with mena for numerical columns
+    #
     
 
 
@@ -53,7 +55,7 @@ def clean_data(df):
 # heart_disease_cleaned = clean_data(heart_disease)
 # print(heart_disease_cleaned.isnull().sum())
 
-def elastic_net_regression(df, target_col, alpha=0.1, l1_ratio=0.5):
+def elastic_net_regression(df, target_col="chol", alpha=0.1, l1_ratio=0.5):
     """
     Performs Elastic Net regression on the provided data.
     
@@ -73,12 +75,7 @@ def elastic_net_regression(df, target_col, alpha=0.1, l1_ratio=0.5):
     X = pd.get_dummies(X, drop_first=True)  # drop_first=True to avoid dummy variable trap
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    if scale_data:
-        # scale the data
-        X_train = dp.normalize_data(X_train)
-        X_test = dp.normalize_data(X_test)
-
+   
     model = ElasticNet(alpha=alpha, l1_ratio=l1_ratio)
     model.fit(X_train, y_train)
 
