@@ -60,7 +60,7 @@ def remove_cols_percent_missing(data, percent_missing=50):
 
 
 
-def impute_missing_values(data, strategy='mean', target_col='target'):
+def impute_missing_values(data, strategy='mean', target_col='chol'):
     
     """
     Fill missing values in the dataset.

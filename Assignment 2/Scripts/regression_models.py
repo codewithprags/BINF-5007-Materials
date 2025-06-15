@@ -1,6 +1,10 @@
 from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import ElasticNet
 from sklearn.linear_model import ElasticNetCV
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import OrdinalEncoder
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score, average_precision_score
+from sklearn.linear_model import LogisticRegressionCV
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score
 import seaborn as sns
@@ -68,7 +72,11 @@ def elastic_net_regression(df, target_col="chol", alpha=0.1, l1_ratio=0.5):
     Returns:
     tuple: Model, predictions, MSE, R-squared score.
     """
-    X = df.drop(columns=[target_col])
+    df['chol'] = df['chol'].fillna(df['chol'].mean())
+    #drop missing values in the target column
+    df = df.dropna(subset=[target_col])  # Ensure the target column has no NaN values
+    X = df.drop(columns=[target_col]) 
+
     y = df[target_col]
 
     #one-hot encoding categorical variables
@@ -142,4 +150,52 @@ def elastic_net_regression(df, target_col="chol", alpha=0.1, l1_ratio=0.5):
 # print("Performing Elastic Net regression...")
 # heart_disease_cleaned = clean_data(heart_disease)   
 # elastic_net_regression(heart_disease_cleaned, target_col='chol')
+
+
+def logistic_regression(df, target_col="num"):
+    """
+    Performs Logistic Regression on the provided data.
+    To predict the presence of heart disease as a binary classification problem. 
+    column name = num
+    Use accuracy, F1 score, AUROC, and AUPRC as evaluation metrics.
+    Use LogisticRegression. Experiment with varying parameters (penalty and solver) 
+    and observe their effects on model coefficients and performance.
+    
+    Tune the hyperparameter n_neighbors (e.g., {1, 5, 10}) and compare its impact on evaluation metrics.
+    
+    Plot AUROC and AUPRC curves for the model’s best confi guration.
+
+    Parameters:
+    df (pd.DataFrame): The input DataFrame containing features and target.
+    target_col (str): The name of the target column.
+    
+    Returns:
+    tuple: Model, predictions, accuracy score.
+    """
+    data = df.copy()
+    data.loc[:,target_col] = (data[target_col] != 0).astype(int)
+    if data[target_col].nunique() != 2:
+        raise ValueError(f"Target column '{target_col}' must be binary (0 or 1). Found {data[target_col].nunique()} unique values.")
+    
+
+    X = data.drop(columns=[target_col])
+    return data
+
+
+
+# Clean the data
+
+#heart_disease_cleaned = clean_data(heart_disease)
+test_logistic_data = logistic_regression(heart_disease, target_col='num')
+print(test_logistic_data["num"].unique())
+
+plt.scatter(test_logistic_data['age'], test_logistic_data['num'], alpha=0.5)
+plt.xlabel('Age')
+plt.ylabel('Heart Disease (num)')
+plt.title('Age vs Heart Disease')
+plt.show()
+
+
+
+   
 
