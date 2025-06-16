@@ -69,7 +69,7 @@ def impute_missing_values(data, strategy='mean', target_col='chol'):
     :return: pandas DataFrame
     """
     #TODO: Fill missing values based on the specified strategy
-    print("_____________________Imputing Missing Values_____________________________")
+    
     messy_data_impute = data.copy()
     
     for col in messy_data_impute:  # exlcude the target column
@@ -108,7 +108,7 @@ def remove_duplicates(data):
     :return: pandas DataFrame
     """
     # TODO: Remove duplicate rows
-    print("_____________________Checking Data for Duplicates_____________________________")
+    
     messy_data_noduplicate = data.copy().drop_duplicates()  #drops druplicate rows
 
     return messy_data_noduplicate
@@ -159,23 +159,13 @@ def normalize_data(data,method='minmax', target_col='target'):
     :param method: str, normalization method ('minmax' (default) or 'standard')
     """
     # TODO: Normalize numerical data using Min-Max or Standard scaling
-    print("_____________________Encoding and Normalizing the Data_____________________________")
+    
     normal_data = data.copy()
 
     object_cols = normal_data.select_dtypes(include=['object', 'category']).columns  #stores all object/character columns
     numeric_cols = normal_data.select_dtypes(include = ["number"]).columns   #stores all numeric cols
 
-    # if not object_cols.empty:   #one hot encoding for the catergorial data columns, stores each category in its own col and adds to the dataset
-    #     normal_data = pd.get_dummies(
-    #         normal_data,
-    #         columns=object_cols,
-    #         prefix_sep='_',
-    #         drop_first=True,
-    #         dtype='int8'
-    #     )
-
-   
-
+    
     if target_col in numeric_cols:  #ensures we are leaving out target from the numeric cols, bc altering this will alter our model
         numeric_cols = numeric_cols.drop(target_col)
 

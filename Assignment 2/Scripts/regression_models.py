@@ -2,13 +2,16 @@ from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import ElasticNet
 from sklearn.linear_model import ElasticNetCV
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import OrdinalEncoder
+#from sklearn.preprocessing import GridSearchCV
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score, average_precision_score
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_curve, precision_recall_curve
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+
 import seaborn as sns
-import matplotlib.pyplot as plt
 import numpy as np 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -29,29 +32,12 @@ def clean_data(df):
     """
     df_cleaned = df.copy()  # Create a copy of the DataFrame to avoid modifying the original
 
-
-    # missing_pct = df_cleaned.isnull().mean() * 100
-    # percent_missing = 50  # Set the threshold for missing data percentage
-    # cols_to_remove = []
-    # for col in df_cleaned.columns:   # loops though each column, exlcuding the target column and evaluates if the column should be removed based on the percentation
-    #     if missing_pct[col] >= percent_missing:
-    #         cols_to_remove.append(col)
-
-    # print(f"Columns with more than {percent_missing}% missing values: {cols_to_remove}")
-
-    # if cols_to_remove:# Only remove columns if any were identified
-    #     df_cleaned = df_cleaned.drop(columns=cols_to_remove)
-    #     print(f"Columns removed due to exceeding {percent_missing}% missing threshold: {cols_to_remove}")
     df_cleaned = df.loc[:, df.isnull().mean()<0.50]
     df_cleaned = df_cleaned.dropna() 
     
      # Remove rows with NaN values
     unique_indices = df.drop_duplicates().index
     df_cleaned = df.iloc[unique_indices]
-
-    #
-    
-
 
     return df_cleaned
 
@@ -177,25 +163,227 @@ def logistic_regression(df, target_col="num"):
     if data[target_col].nunique() != 2:
         raise ValueError(f"Target column '{target_col}' must be binary (0 or 1). Found {data[target_col].nunique()} unique values.")
     
+    
+
+    object_cols = data.select_dtypes(include=['object', 'category']).columns  #stores all object/character columns
+    numeric_cols = [col for col in df.select_dtypes(include=["number"]).columns if col != target_col]   #stores all numeric cols
+
+    # if not object_cols.empty:   #one hot encoding for the catergorial data columns, stores each category in its own col and adds to the dataset
+    data = pd.get_dummies(
+                        data,
+                        columns=object_cols,
+                        prefix_sep='_',
+                        drop_first=True,
+                        dtype='int8'
+                        )
+    data[numeric_cols] = StandardScaler().fit_transform(data[numeric_cols])
+
+    data = data.dropna()  # <--- Add this line
 
     X = data.drop(columns=[target_col])
-    return data
+    y = data[target_col]
+
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Train model
+    model = LogisticRegression(
+        penalty='l1',  # Using l1 penalty
+        solver='saga',
+        max_iter=1000,
+        random_state=42,
+        class_weight='balanced'
+    )
+    model.fit(X_train, y_train)
+    
+    # Make predictions
+    y_pred = model.predict(X_test)
+    y_proba = model.predict_proba(X_test)[:, 1]
+    
+    # Calculate metrics
+    metrics = {
+        'accuracy': accuracy_score(y_test, y_pred),
+        'f1_score': f1_score(y_test, y_pred),
+        'roc_auc': roc_auc_score(y_test, y_proba),
+        'average_precision': average_precision_score(y_test, y_proba)
+    }
+
+    # Plot AUROC and AUPRC curves
+    fpr, tpr, _ = roc_curve(y_test, y_proba)    
+    precision, recall, _ = precision_recall_curve(y_test, y_proba)
+    plt.figure(figsize=(12, 5)) 
+    plt.subplot(1, 2, 1)
+    plt.plot(fpr, tpr, label='AUROC')   
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Logistic Regression - AUROC Curve')
+    plt.legend()
+    
+    plt.subplot(1, 2, 2)
+    plt.plot(recall, precision, label='AUPRC')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Logistic Regression - AUPRC Curve')
+    plt.legend()
+
+    plt.show()
+
+    return data, model, X_test, y_test, metrics, y_pred , y_proba
 
 
 
-# Clean the data
+# # Clean the data
+# heart_disease_cleaned = clean_data(heart_disease)
+# heart_disease_cleaned = dp.impute_missing_values(heart_disease_cleaned,strategy='mean',target_col='chol')
+# heart_disease_cleaned = dp.remove_outliers(heart_disease_cleaned, target_col='chol')
+# heart_disease_cleaned = dp.remove_redundant_features(heart_disease_cleaned)
 
-#heart_disease_cleaned = clean_data(heart_disease)
-test_logistic_data = logistic_regression(heart_disease, target_col='num')
-print(test_logistic_data["num"].unique())
+# #test_logistic_data = logistic_regression(heart_disease_cleaned, target_col='num')
 
-plt.scatter(test_logistic_data['age'], test_logistic_data['num'], alpha=0.5)
-plt.xlabel('Age')
-plt.ylabel('Heart Disease (num)')
-plt.title('Age vs Heart Disease')
-plt.show()
+# # Print the metrics
+# #print(test_logistic_data[4])
+
+# # plt.scatter(test_logistic_data['age'], test_logistic_data['num'], alpha=0.5)
+# # plt.xlabel('Age')
+# # plt.ylabel('Heart Disease (num)')
+# # plt.title('Age vs Heart Disease')
+# # plt.show()
 
 
+def knn_logistic_regression(df, target_col="num", knn=5):
+    """
+    Performs K-Nearest Neighbors (KNN) classification on the provided data.
+    
+    Parameters:
+    df (pd.DataFrame): The input DataFrame containing features and target.
+    target_col (str): The name of the target column.
+    n_neighbors (int): Number of neighbors to use for KNN.
+    
+    Returns:
+    tuple: Model, predictions, accuracy score.
+    """
+    
 
+    data = df.copy()
+    data.loc[:,target_col] = (data[target_col] != 0).astype(int)
+    
+    if data[target_col].nunique() != 2:
+        raise ValueError(f"Target column '{target_col}' must be binary (0 or 1). Found {data[target_col].nunique()} unique values.")
+    
+    object_cols = data.select_dtypes(include=['object', 'category']).columns
+    numeric_cols = [col for col in df.select_dtypes(include=["number"]).columns if col != target_col]
+
+    # One-hot encoding for categorical variables
+    data = pd.get_dummies(
+                        data,
+                        columns=object_cols,
+                        prefix_sep='_',
+                        drop_first=True,
+                        dtype='int8'
+                        )
+    
+    data[numeric_cols] = StandardScaler().fit_transform(data[numeric_cols])
+    
+    data = data.dropna()  # <--- Add this line
+
+    X = data.drop(columns=[target_col])
+    y = data[target_col]
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Train model
+    model = KNeighborsClassifier(n_neighbors=knn)
+    model.fit(X_train, y_train)
+
+    # Make predictions
+    y_pred = model.predict(X_test)
+
+    
    
 
+    #AROC and AUPRC curves
+    y_proba = model.predict_proba(X_test)[:, 1]
+    fpr, tpr, _ = roc_curve(y_test, y_proba)
+    precision, recall, _ = precision_recall_curve(y_test, y_proba)
+
+    k_values = [1, 3, 5, 7, 9, 11, 15]
+    results = []
+
+    for k in k_values:
+        model = KNeighborsClassifier(n_neighbors=k)
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        y_proba = model.predict_proba(X_test)[:, 1]
+        metrics = {
+            'k': k,
+            'accuracy': accuracy_score(y_test, y_pred),
+            'f1_score': f1_score(y_test, y_pred),
+            'roc_auc': roc_auc_score(y_test, y_proba),
+            'average_precision': average_precision_score(y_test, y_proba)
+        }
+        results.append(metrics)
+    
+    best_k = max(results, key=lambda x: x['roc_auc'])['k']
+    print(f"Best k: {best_k}")
+    print("KNN Classification Metrics:")
+    for metric, value in metrics.items():
+        if metric != 'k':
+            print(f"{metric}: {value}")
+
+
+    
+    plt.figure(figsize=(12, 5)) 
+    plt.subplot(1, 2, 1)
+    plt.plot(fpr, tpr, label='AUROC')   
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('KNN Logistic Regression - AUROC Curve')
+    plt.legend()
+
+    plt.subplot(1, 2, 2)
+    plt.plot(recall, precision, label='AUPRC')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('KNN Logistic Regression - AUPRC Curve')
+    plt.legend()
+    plt.show()
+
+    return model,data, y_pred, metrics, X_test, y_test, y_proba
+
+
+def plotting_AROC_AUPRC_curves(y_test, y_proba, regression_type="Logistic"):
+    """
+    Plots the AUROC and AUPRC curves.
+    
+    Parameters:
+    y_test (array-like): True labels for the test set.
+    y_proba (array-like): Predicted probabilities for the positive class.
+    """
+    fpr, tpr, _ = roc_curve(y_test, y_proba)
+    precision, recall, _ = precision_recall_curve(y_test, y_proba)
+    
+    if regression_type == "Logistic":
+        plt.title("Logistic - AUROC and AUPRC Curves")
+    elif regression_type == "KNN":
+        plt.title("KNN - AUROC and AUPRC Curves")
+
+    
+    plt.figure(figsize=(12, 5)) 
+    plt.subplot(1, 2, 1)
+    plt.plot(fpr, tpr, label='AUROC')   
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.legend()
+    plt.subplot(1, 2, 2)
+    plt.plot(recall, precision, label='AUPRC')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.legend()
+    plt.show()
+
+    return plt
+
+
+# test_knn_data = knn_logistic_regression(heart_disease_cleaned, target_col='num', knn=)
+# # Print the accuracy    
+# print(test_knn_data[3])
