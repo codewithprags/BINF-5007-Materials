@@ -7,7 +7,7 @@ Assignment 1. Data Preprocessing for Simple Model Evaluation of Messy Data -
 ----Clean_data --> Processed patient data prepared for linear regression model
 
 Assignment 2. Linear and Correlational Models for Heart Disease data with data preprocessing.
-----heart_disease_uci --> raw data from UCI containing patient information regarding heart disease amongst various other features.
+----heart_disease_uci --> raw data from UCI containing patient information regarding heart disease amongst various other features.   							
 Linear regression model for predicting Cholesterol levels in patients.
 Logistic regression model, and knn_logistic regression model are used to model disease state as a binary classification.
 Heatmaps, AROC, and AUPRC are used to visualize the findings of the most optimal configuration obtained using gridsearch and cross-validation methods. 
