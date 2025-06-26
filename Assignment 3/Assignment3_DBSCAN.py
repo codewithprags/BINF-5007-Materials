@@ -50,7 +50,7 @@ def parameter_optimize(dataset,dataname = "Moons Dataset", min_samples_range=ran
     for i in min_samples_range:
         neighbors = NearestNeighbors(n_neighbors=i)
         neighbors_fit = neighbors.fit(dataset)
-        distances = neighbors_fit.kneighbors(dataset)
+        distances, indices = neighbors_fit.kneighbors(dataset)
         k_distances = np.sort(distances[:, i-1])
         all_k_distances.append(k_distances)
         axis[1].plot(k_distances, label=f'min_samples={i}')
@@ -71,7 +71,7 @@ def parameter_optimize(dataset,dataname = "Moons Dataset", min_samples_range=ran
     figure.savefig(f"PreliminaryClustering_Analysis_{dataname}.png")
 
     plt.show()
-    return wcss, all_k_distances, n_clusters_range
+    return 
 
 
 def dbscan_gridsearch(dataset, eps_range=np.arange(0.25, 3, 0.25), min_samples_range=[1,2,3,4,5,6,7,8,9,10]):
