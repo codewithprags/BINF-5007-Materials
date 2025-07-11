@@ -1,0 +1,10 @@
+[workspace]
+authors = ["codewithprags <pragati.dwivedi@outlook.com>"]
+channels = ["conda-forge"]
+name = "Lab 9"
+platforms = ["win-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
